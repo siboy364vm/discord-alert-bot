@@ -1,0 +1,1 @@
+from .file import safe_write
