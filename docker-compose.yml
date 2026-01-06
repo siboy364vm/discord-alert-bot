@@ -1,0 +1,9 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./settings.json:/app/settings.json
+    restart: unless-stopped
+    command: python src/main.py
