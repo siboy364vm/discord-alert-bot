@@ -46,8 +46,8 @@ class alert_settings():
 
         self.alert_msg = "{m} Timer up {n}!!!"
         self.alert_msg_snooze = "{m} Snoozed {min} minutes, {n}. Will alert again in {sec} seconds."
-        self.alert_msg_ack = "{m} Alert dismissed, {n}!"
-        self.alert_msg_max_snoozes = "{m} Max snoozes reached ({max_snoozes}), {n}."
+        self.alert_msg_ack = "{m} Alert acknowledged, {n}!"
+        self.alert_msg_max_snoozes = "{m} Max snoozes reached ({max_snoozes}). Alert dismissed for {n}."
 
         self.wait_for_prev_ack: bool = True
         
