@@ -4,10 +4,13 @@ import math
 import discord
 import schedule
 
-from discord import Message, User, NotFound, Client
+from discord import Message, User, NotFound, Forbidden, HTTPException, Client
 
 from config.base import Config
 from debug import debug_msg
+
+import aiohttp
+import asyncio
 
 class Notis():
     def __init__(self, bot: Client, cfg: Config):
@@ -146,19 +149,29 @@ class Notis():
         # Look through all tracked messages.
         for i, msg in enumerate(self.msgs):
             try:
-                if msg in self.msgs:
-                    msg = await msg.channel.fetch_message(msg.id)
-                    self.msgs[i] = msg
+                msg = await msg.channel.fetch_message(msg.id)
+                self.msgs[i] = msg
+
             except NotFound:
                 self.msgs.remove(msg)
 
-                continue
-            except Exception as e:
-                if msg in self.msgs:
+            except Forbidden:
+                self.msgs.remove(msg)
+
+            except HTTPException as e:
+                if e.status == 503:
+                    debug_msg(cfg, 3, f"Discord 503 fetching message {msg.id}, retry later")
+                    
+                    continue 
+                else:
                     self.msgs.remove(msg)
+                    debug_msg(cfg, 3, f"HTTP error fetching message {msg.id}: {e}")
 
-                debug_msg(cfg, 3, f"Error fetching message ID {msg.id}: {e}")
-
+            except (aiohttp.ClientOSError,
+                    aiohttp.ClientConnectionError,
+                    asyncio.TimeoutError) as e:
+                debug_msg(cfg, 3, f"Network error fetching message {msg.id}: {e}")
+                
                 continue
 
             reactionCnt = len(msg.reactions)
