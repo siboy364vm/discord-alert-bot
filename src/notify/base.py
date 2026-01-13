@@ -128,91 +128,107 @@ class Notis():
             self.snooze_job = schedule.every(self.snooze_time).seconds.do(lambda: asyncio.create_task(self.snooze(user)))
 
     async def wait_for_reaction_or_snooze(self, user: User):
-        cfg = self.cfg
+        try:
+            cfg = self.cfg
 
-        max_snoozes = self.max_snoozes
+            max_snoozes = self.max_snoozes
 
-        if self.currently_in_check:
-                return
-            
-        self.currently_in_check = True
-
-        if len(self.msgs) == 0:
-            debug_msg(cfg, 2, "No more messages to check. Stopping recheck job...")
-
-            self.cancel_recheck_job()
-
-            return
-
-        debug_msg(cfg, 2, f"Rechecking messages(Snooze count: {self.snoozes}/{max_snoozes})...")
-
-        # Look through all tracked messages.
-        for i, msg in enumerate(self.msgs):
-            try:
-                msg = await msg.channel.fetch_message(msg.id)
-                self.msgs[i] = msg
-
-            except NotFound:
-                self.msgs.remove(msg)
-
-            except Forbidden:
-                self.msgs.remove(msg)
-
-            except HTTPException as e:
-                if e.status == 503:
-                    debug_msg(cfg, 3, f"Discord 503 fetching message {msg.id}, retry later")
-                    
-                    continue 
-                else:
-                    self.msgs.remove(msg)
-                    debug_msg(cfg, 3, f"HTTP error fetching message {msg.id}: {e}")
-
-            except (aiohttp.ClientOSError,
-                    aiohttp.ClientConnectionError,
-                    asyncio.TimeoutError) as e:
-                debug_msg(cfg, 3, f"Network error fetching message {msg.id}: {e}")
+            if self.currently_in_check:
+                    return
                 
-                continue
+            self.currently_in_check = True
 
-            reactionCnt = len(msg.reactions)
+            if len(self.msgs) == 0:
+                debug_msg(cfg, 2, "No more messages to check. Stopping recheck job...")
 
-            debug_msg(cfg, 3, f"Checking reactions for message ID {msg.id} ({reactionCnt})...\n")
+                self.cancel_recheck_job()
 
-            if reactionCnt > 0:
-                for reaction in msg.reactions:
-                    debug_msg(cfg, 3, f"Checking users for reaction {reaction.emoji}...\n")
+                return
 
-                    found = False
+            debug_msg(cfg, 2, f"Rechecking messages(Snooze count: {self.snoozes}/{max_snoozes})...")
 
-                    async for rUsr in reaction.users():
-                        # Exclude bot.
-                        if rUsr == self.bot.user:
-                            continue
+            valid_msgs = []
 
-                        if rUsr == user:
-                            debug_msg(cfg, 1, f"{user.name} has acknowledged the alert!")
+            # Look through all tracked messages.
+            for msg in self.msgs:
+                try:
+                    msg_updated = await msg.channel.fetch_message(msg.id)
+                    
+                    valid_msgs.append(msg_updated)
+                except (NotFound, Forbidden):
+                    continue
+                except HTTPException as e:
+                    if e.status == 503:
+                        debug_msg(cfg, 3, f"Discord 503 fetching message {msg.id}, retry later")
 
-                            await msg.channel.send(cfg.Alert.alert_msg_ack.format(m=user.mention, n = user.name))
+                        valid_msgs.append(msg)
+                        
+                        continue 
+                    else:
+                        debug_msg(cfg, 3, f"HTTP error fetching message {msg.id}: {e}")
+                except (aiohttp.ClientOSError,
+                        aiohttp.ClientConnectionError,
+                        asyncio.TimeoutError) as e:
+                    debug_msg(cfg, 3, f"Network error fetching message {msg.id}: {e}")
+                    
+                    valid_msgs.append(msg)
+                    
+                    continue
+                except Exception as e:
+                    debug_msg(cfg, 0, f"Unexpected error fetching message {msg.id}: {e}")
 
-                            self.cancel_recheck_job()
+                    valid_msgs.append(msg)
 
-                            found = True
+                reactionCnt = len(msg.reactions)
 
-                            break
-                    if found:
-                        break
-        
-        # Check for max snoozes.
-        if max_snoozes > 0 and self.snoozes >= max_snoozes:
-            debug_msg(cfg, 1, "Max snoozes reached. Stopping notifications...")
+                debug_msg(cfg, 3, f"Checking reactions for message ID {msg.id} ({reactionCnt})...\n")
 
-            snoozeMsg = cfg.Alert.alert_msg_max_snoozes.format(m=user.mention, n = user.name, max_snoozes = max_snoozes)
+                if reactionCnt > 0:
+                    for reaction in msg.reactions:
+                        try:
+                            debug_msg(cfg, 3, f"Checking users for reaction {reaction.emoji}...\n")
 
-            await msg.channel.send(snoozeMsg)
+                            found = False
 
-            self.cancel_recheck_job()
+                            async for rUsr in reaction.users():
+                                try:
+                                    # Exclude bot.
+                                    if rUsr == self.bot.user:
+                                        continue
 
-        self.currently_in_check = False
+                                    if rUsr == user:
+                                        debug_msg(cfg, 1, f"{user.name} has acknowledged the alert!")
+
+                                        await msg.channel.send(cfg.Alert.alert_msg_ack.format(m=user.mention, n = user.name))
+
+                                        self.cancel_recheck_job()
+
+                                        found = True
+
+                                        break
+                                except Exception as e:
+                                    debug_msg(cfg, 0, f"Error checking reaction user for message ID {msg.id}: {e}")
+                            if found:
+                                break
+                        except Exception as e:
+                            debug_msg(cfg, 0, f"Error checking reaction users for message ID {msg.id}: {e}")
+
+            # Only keep valid messages.
+            self.msgs = valid_msgs
+            self.currently_in_check = False
+            
+            # Check for max snoozes.
+            if max_snoozes > 0 and self.snoozes >= max_snoozes:
+                debug_msg(cfg, 1, "Max snoozes reached. Stopping notifications...")
+
+                snoozeMsg = cfg.Alert.alert_msg_max_snoozes.format(m=user.mention, n = user.name, max_snoozes = max_snoozes)
+
+                await msg.channel.send(snoozeMsg)
+
+                self.cancel_recheck_job()
+        except Exception as e:
+            debug_msg(cfg, 0, f"Error in wait_for_reaction_or_snooze: {e}")
+            self.currently_in_check = False
     
     async def snooze(self, user: User):
         if not self.is_checking:
