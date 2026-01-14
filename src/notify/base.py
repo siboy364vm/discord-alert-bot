@@ -150,11 +150,11 @@ class Notis():
             valid_msgs = []
 
             # Look through all tracked messages.
-            for msg in self.msgs:
+            for msg_old in self.msgs:
                 try:
-                    msg_updated = await msg.channel.fetch_message(msg.id)
+                    msg = await msg_old.channel.fetch_message(msg_old.id)
                     
-                    valid_msgs.append(msg_updated)
+                    valid_msgs.append(msg)
                 except (NotFound, Forbidden):
                     continue
                 except HTTPException as e:
