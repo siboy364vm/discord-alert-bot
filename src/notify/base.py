@@ -223,7 +223,9 @@ class Notis():
                     break
 
             # Only keep valid messages.
-            self.msgs = valid_msgs
+            if not found:
+                self.msgs = valid_msgs
+
             self.currently_in_check = False
             
             # Check for max snoozes.
