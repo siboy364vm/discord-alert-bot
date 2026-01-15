@@ -151,44 +151,51 @@ class Notis():
 
             # Look through all tracked messages.
             for msg_old in self.msgs:
+                msg = None
+
                 try:
                     msg = await msg_old.channel.fetch_message(msg_old.id)
-                    
-                    valid_msgs.append(msg)
                 except (NotFound, Forbidden):
+                    debug_msg(cfg, 2, f"Message ID {msg_old.id} not found or inaccessible. Assuming deleted/removed.")
                     continue
                 except HTTPException as e:
                     if e.status == 503:
-                        debug_msg(cfg, 3, f"Discord 503 fetching message {msg.id}, retry later")
+                        debug_msg(cfg, 3, f"Message ID {msg_old.id} fetch returned 503 Service Unavailable. Retaining message for next check.")
+                        valid_msgs.append(msg_old)
 
-                        valid_msgs.append(msg)
-                        
                         continue 
                     else:
                         debug_msg(cfg, 3, f"HTTP error fetching message {msg.id}: {e}")
                 except (aiohttp.ClientOSError,
                         aiohttp.ClientConnectionError,
                         asyncio.TimeoutError) as e:
-                    debug_msg(cfg, 3, f"Network error fetching message {msg.id}: {e}")
+                    debug_msg(cfg, 3, f"Network error fetching message {msg_old.id}: {e}")
                     
-                    valid_msgs.append(msg)
+                    valid_msgs.append(msg_old)
                     
                     continue
                 except Exception as e:
-                    debug_msg(cfg, 0, f"Unexpected error fetching message {msg.id}: {e}")
+                    debug_msg(cfg, 0, f"Unexpected error fetching message {msg_old.id}: {e}")
 
-                    valid_msgs.append(msg)
+                    valid_msgs.append(msg_old)
+
+                    continue
+                                      
+                if msg is None:
+                    continue
+
+                valid_msgs.append(msg)
 
                 reactionCnt = len(msg.reactions)
 
                 debug_msg(cfg, 3, f"Checking reactions for message ID {msg.id} ({reactionCnt})...\n")
 
+                found = False
+
                 if reactionCnt > 0:
                     for reaction in msg.reactions:
                         try:
                             debug_msg(cfg, 3, f"Checking users for reaction {reaction.emoji}...\n")
-
-                            found = False
 
                             async for rUsr in reaction.users():
                                 try:
@@ -212,6 +219,8 @@ class Notis():
                                 break
                         except Exception as e:
                             debug_msg(cfg, 0, f"Error checking reaction users for message ID {msg.id}: {e}")
+                if found:
+                    break
 
             # Only keep valid messages.
             self.msgs = valid_msgs
@@ -223,11 +232,13 @@ class Notis():
 
                 snoozeMsg = cfg.Alert.alert_msg_max_snoozes.format(m=user.mention, n = user.name, max_snoozes = max_snoozes)
 
-                await msg.channel.send(snoozeMsg)
+                if valid_msgs:
+                    await valid_msgs[0].channel.send(snoozeMsg)
 
                 self.cancel_recheck_job()
         except Exception as e:
             debug_msg(cfg, 0, f"Error in wait_for_reaction_or_snooze: {e}")
+
             self.currently_in_check = False
     
     async def snooze(self, user: User):
